@@ -4,6 +4,7 @@ import java.awt.Event;
 import java.awt.Point;
 import java.awt.RenderingHints.Key;
 import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 
 import com.rupeng.game.GameCore;
 import com.sundy.www.gamecore.GameImage;
@@ -27,6 +28,7 @@ public class Main implements Runnable
 	GameSprite spTaoZi[] = new GameSprite[6];// 桃子精灵数组
 	boolean bookTaoZi[] = new boolean[6];// 与桃子数组相互对应的book数组，记录桃子是否被吃，true吃了
 											// false没吃
+	int countEatTaoZi;// 吃掉了多少个桃子
 
 	/**
 	 * 游戏开始
@@ -60,7 +62,7 @@ public class Main implements Runnable
 				GameCore.getGameHeight() - 170);
 
 		/*
-		 * 线程控制小球的移动
+		 * 匿名类线程 小球不停的在屏幕上弹射
 		 */
 		GameCore.asyncRun(new Runnable()
 		{
@@ -96,14 +98,7 @@ public class Main implements Runnable
 					spQiu.setPosition(spQiu.getX() + Dir.x, spQiu.getY()
 							+ Dir.y);// 小球的移动（重置小球位置）
 
-					// 控制小球飞行的速度
-					GameCore.pause(5);
-
-					// 当猴头碰到球，则方向发生变化
-					if (spQiu.xiangJiao(spHouZi))
-					{
-						Dir.y *= -1;// 为何是这样，请画图分析
-					}
+					GameCore.pause(5);// 控制小球飞行的速度
 				}
 			}
 		});
@@ -113,49 +108,89 @@ public class Main implements Runnable
 		 */
 		while (true)
 		{
-			int kc;// 方向监听器
-			kc = GameCore.getPressedKeyCode();
+			int kc = GameCore.getPressedKeyCode();// 方向监听器
+			moveTou(kc);// 根据kc来控制猴头的移动
 
-			/*
-			 * 根据kc决定精灵的走向
-			 */
-			switch (kc)
+			// 球落地时，死亡。重置小球的位置
+			if (spQiu.getY() > GameCore.getGameHeight())
 			{
-			case KeyEvent.VK_RIGHT:
-				// spHouzi的x坐标不能超过窗体的宽度
-				if (spHouZi.getX() < GameCore.getGameWidth() - 110)
-				{
-					spHouZi.moveRight();
-					spHouZi.moveRight();
-					spHouZi.moveRight();
-					spHouZi.moveRight();
-					spHouZi.moveRight();// 移动五次，为了加快速度
-					break;
-				}
-				break;
-			case KeyEvent.VK_LEFT:
-				// spHouzi的x坐标不能小于2
-				if (spHouZi.getX() > 2)
-				{
-					spHouZi.moveLeft();
-					spHouZi.moveLeft();
-					spHouZi.moveLeft();
-					spHouZi.moveLeft();
-					spHouZi.moveLeft();// 移动五次，为了加快速度
-					break;
-				}
-				break;
+				GameCore.alert("你死啦,这么简单的游戏不会？");
+				spQiu.setPosition(GameCore.rand(10, 600),
+						GameCore.getGameHeight() - 170);
+
+				Dir.x = -1;
+				Dir.y = -1;// 方向初始化
+
 			}
 
-			eatTaoZi();// 小球与桃子的碰撞检测 判断小球与桃子是否相交
+			// 当猴头碰到球，则方向发生变化(板子碰到小球反弹)
+			if (spQiu.xiangJiao(spHouZi))
+			{
+				// 为何是这样，请画图分析
+				Dir.y *= -1;
+			}
+
+			// 小球与桃子的碰撞检测 判断小球与桃子是否相交(吃到桃子)
+			if (eatTaoZi())
+			{
+				countEatTaoZi++;// 计数器增加，以此判断是否吃完了
+			}
+
+			// 判断是否吃完了
+			if (countEatTaoZi == spTaoZi.length)
+			{
+				GameCore.alert("哎呦不错，你赢了！");
+				countEatTaoZi=0;
+				initSpTaoZiArr();
+			}
 		}
 
 	}
 
 	/**
-	 * 小球与桃子的碰撞检测 判断小球与桃子是否相交
+	 * 根据kc值移动猴头
+	 * 
+	 * @param kc
+	 *            键盘按键值
 	 */
-	public void eatTaoZi()
+	public void moveTou(int kc)
+	{
+
+		switch (kc)
+		{
+		case KeyEvent.VK_RIGHT:
+			// spHouzi的x坐标不能超过窗体的宽度
+			if (spHouZi.getX() < GameCore.getGameWidth() - 110)
+			{
+				spHouZi.moveRight();
+				spHouZi.moveRight();
+				spHouZi.moveRight();
+				spHouZi.moveRight();
+				spHouZi.moveRight();// 移动五次，为了加快速度
+				break;
+			}
+			break;
+		case KeyEvent.VK_LEFT:
+			// spHouzi的x坐标不能小于2
+			if (spHouZi.getX() > 2)
+			{
+				spHouZi.moveLeft();
+				spHouZi.moveLeft();
+				spHouZi.moveLeft();
+				spHouZi.moveLeft();
+				spHouZi.moveLeft();// 移动五次，为了加快速度
+				break;
+			}
+			break;
+		}
+	}
+
+	/**
+	 * 小球与桃子的碰撞检测 判断小球与桃子是否相交
+	 * 
+	 * @return true 吃了个桃子 false没吃到
+	 */
+	public boolean eatTaoZi()
 	{
 		for (int i = 0; i < spTaoZi.length; i++)
 		{
@@ -164,8 +199,11 @@ public class Main implements Runnable
 				bookTaoZi[i] = true;
 				spTaoZi[i].remove();
 				spTaoZi[i] = null;
+
+				return true;
 			}
 		}
+		return false;
 	}
 
 	/**
